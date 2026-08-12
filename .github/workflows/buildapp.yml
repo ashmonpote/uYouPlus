@@ -1,6 +1,3 @@
-# Original idea by @ISnackable. Thanks to him for handling the hardest parts!
-# https://github.com/ISnackable/CercubePlus/blob/main/.github/workflows/Build.yml
-
 name: Build and Release uYouPlus
 
 on:
@@ -11,31 +8,37 @@ on:
         default: "3.0.4"
         required: true
         type: string
+
       uyou_url:
         description: "The URL for download uYou"
         default: "https://something.url/uyou.deb"
         required: false
         type: string
+
       decrypted_youtube_url:
         description: "Direct URL to the decrypted YouTube ipa. The version of YouTube will be detected automatically."
         default: ""
         required: true
         type: string
+
       bundle_id:
         description: "Modify the bundle ID. Not recommended"
         default: "com.google.ios.youtube"
         required: true
         type: string
+
       app_name:
         description: "Modify the name of the app on the Home Screen. Not recommended"
         default: "YouTube"
         required: true
         type: string
+
       create_release:
         description: "Create a draft release"
         default: true
         required: false
         type: boolean
+
       upload_artifact:
         description: "Upload Artifact"
         default: false
@@ -50,6 +53,7 @@ jobs:
   build:
     name: Build uYouPlus
     runs-on: macos-15
+
     permissions:
       contents: write
 
@@ -94,7 +98,8 @@ jobs:
       - name: Download iOS 16.5 SDK
         if: steps.SDK.outputs.cache-hit != 'true'
         run: |
-          git clone -n --depth=1 --filter=tree:0 https://github.com/theos/sdks.git && cd sdks
+          git clone -n --depth=1 --filter=tree:0 https://github.com/theos/sdks.git
+          cd sdks
           git sparse-checkout set --no-cone iPhoneOS16.5.sdk
           git checkout
           mv *.sdk $THEOS/sdks
@@ -126,7 +131,6 @@ jobs:
           echo "==> YouTube v$youtube_version downloaded!"
           sed -i '' "17s#.*#YOUTUBE_VERSION = ${youtube_version}#g" Makefile
           echo "youtube_version=${youtube_version}" >> $GITHUB_OUTPUT
-
         env:
           THEOS: ${{ github.workspace }}/theos
           YOUTUBE_URL: ${{ inputs.decrypted_youtube_url }}
@@ -136,13 +140,12 @@ jobs:
         run: |
           mkdir -p theos/lib/iphone/rootless
           cd ${{ github.workspace }}/main
-          sed -i '' 's/^BUNDLE_ID = .*/BUNDLE_ID = ${{ env.BUNDLE_ID }}/' Makefile
-         sed -i '' 's/^DISPLAY_NAME = .*/DISPLAY_NAME = ${{ env.APP_NAME }}/' Makefile
+          sed -i '' "s/^BUNDLE_ID = .*/BUNDLE_ID = ${BUNDLE_ID}/" Makefile
+          sed -i '' "s/^DISPLAY_NAME = .*/DISPLAY_NAME = ${APP_NAME}/" Makefile
           make package THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1
-          echo "package=$(ls -t packages | head -n1)" >>$GITHUB_OUTPUT
+          echo "package=$(ls -t packages | head -n1)" >> $GITHUB_OUTPUT
           echo -e "==> \033[1mSHASUM256: $(shasum -a 256 packages/*.ipa | cut -f1 -d' ')\033[0m"
-          echo -e "==> \033[1mBundle ID: ${{ env.BUNDLE_ID }}\033[0m"
-
+          echo -e "==> \033[1mBundle ID: ${BUNDLE_ID}\033[0m"
         env:
           THEOS: ${{ github.workspace }}/theos
           UYOU_VERSION: ${{ inputs.uyou_version }}
